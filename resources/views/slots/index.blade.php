@@ -85,31 +85,15 @@
         }
 
         .reel {
-    width: 120px;
-    height: 100%;
-    border: 2px solid #a40b0b;
-    border-radius: 5px;
-    overflow: hidden;
-    position: relative;
-    background: #fff;
-    /* Remove any transform/tilting effect */
-    transform: none;  /* Ensure there's no transformation applied */
-    animation: none;   /* Ensure there's no animation applied */
-}
-
-
-        @keyframes reelSpin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            50% {
-                transform: rotate(10deg);
-            }
-
-            100% {
-                transform: rotate(0deg);
-            }
+            width: 120px;
+            height: 100%;
+            border: 2px solid #a40b0b;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+            background: #fff;
+            transform: none;
+            animation: none;
         }
 
         .reel-symbol {
@@ -121,8 +105,6 @@
             font-size: 40px;
             animation: symbolShake 0.5s infinite ease-in-out;
         }
-
-        
 
         .controls {
             display: flex;
@@ -283,7 +265,7 @@
         const increaseBetBtn = document.getElementById('increase-bet');
         const decreaseBetBtn = document.getElementById('decrease-bet');
 
-        // Initialize the reels
+        // Initialize the reels with 10 lines
         function initializeReels() {
             reelsContainer.innerHTML = '';
             for (let i = 0; i < 5; i++) {
@@ -291,8 +273,8 @@
                 reel.className = 'reel';
                 reel.id = `reel-${i}`;
 
-                // Create 3 visible symbols per reel (we'll animate the position)
-                for (let j = 0; j < 3; j++) {
+                // Create 10 visible symbols per reel (this creates the 10 lines)
+                for (let j = 0; j < 10; j++) {
                     const symbol = document.createElement('div');
                     symbol.className = 'reel-symbol';
                     const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
@@ -306,83 +288,81 @@
 
         // Spin the reels
         function spinReels() {
-    if (isSpinning || balance < bet) return;
+            if (isSpinning || balance < bet) return;
 
-    isSpinning = true;
-    balance -= bet;
-    balanceDisplay.textContent = balance;
-    winnings = 0;
-    winningsDisplay.textContent = winnings;
-    spinBtn.disabled = true;
+            isSpinning = true;
+            balance -= bet;
+            balanceDisplay.textContent = balance;
+            winnings = 0;
+            winningsDisplay.textContent = winnings;
+            spinBtn.disabled = true;
 
-    // Spin each reel without the shaking effect
-    const reels = document.querySelectorAll('.reel');
-    const spinPromises = [];
+            const reels = document.querySelectorAll('.reel');
+            const spinPromises = [];
 
-    reels.forEach((reel, index) => {
-        spinPromises.push(new Promise(resolve => {
-            const spinDuration = 2000 + (index * 500);
-            const startTime = Date.now();
+            reels.forEach((reel, index) => {
+                spinPromises.push(new Promise(resolve => {
+                    const spinDuration = 2000 + (index * 500);
+                    const startTime = Date.now();
 
-            const spinInterval = setInterval(() => {
-                const symbolElements = reel.querySelectorAll('.reel-symbol');
-                symbolElements.forEach(symbol => {
-                    // This removes the shaking logic and just scrolls the symbols
-                    const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
-                    
-                    // Clear existing content and add new symbol
-                    symbol.innerHTML = `<img src="${randomSymbol.image}" alt="${randomSymbol.name}" style="max-width:80%; max-height:80%;">`;
-                });
+                    const spinInterval = setInterval(() => {
+                        const symbolElements = reel.querySelectorAll('.reel-symbol');
+                        symbolElements.forEach(symbol => {
+                            const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+                            symbol.innerHTML = `<img src="${randomSymbol.image}" alt="${randomSymbol.name}" style="max-width:80%; max-height:80%;">`;
+                        });
 
-                if (Date.now() - startTime > spinDuration) {
-                    clearInterval(spinInterval);
-                    resolve();
-                }
-            }, 100);
-        }));
-    });
+                        if (Date.now() - startTime > spinDuration) {
+                            clearInterval(spinInterval);
+                            resolve();
+                        }
+                    }, 100);
+                }));
+            });
 
-    Promise.all(spinPromises).then(() => {
-        setTimeout(() => {
-            calculateResults();
-            isSpinning = false;
-            spinBtn.disabled = false;
-        }, 300);
-    });
-}
+            Promise.all(spinPromises).then(() => {
+                setTimeout(() => {
+                    calculateResults();
+                    isSpinning = false;
+                    spinBtn.disabled = false;
+                }, 300);
+            });
+        }
 
-
-        // Calculate winnings based on visible symbols
+        // Calculate winnings based on 10 lines
         function calculateResults() {
             const reels = document.querySelectorAll('.reel');
             const visibleSymbols = [];
 
-            reels.forEach(reel => {
-                const symbolsInReel = reel.querySelectorAll('.reel-symbol');
-                const middleSymbol = symbolsInReel[1];
-                const imgElement = middleSymbol.querySelector('img');
+            // Collect the symbols for each of the 10 lines
+            for (let line = 0; line < 10; line++) {
+                let lineSymbols = [];
+                reels.forEach(reel => {
+                    const symbolInLine = reel.querySelectorAll('.reel-symbol')[line];
+                    const imgElement = symbolInLine.querySelector('img');
+                    const imgSrc = imgElement.src.split('/').pop();
+                    lineSymbols.push(imgSrc);
+                });
+                visibleSymbols.push(lineSymbols);
+            }
 
-                // Get just the filename without path
-                const imgSrc = imgElement.src.split('/').pop();
-                visibleSymbols.push(imgSrc);
-            });
+            // Check for matches on each line
+            visibleSymbols.forEach(lineSymbols => {
+                const symbolCounts = {};
+                lineSymbols.forEach(symbol => {
+                    symbolCounts[symbol] = (symbolCounts[symbol] || 0) + 1;
+                });
 
-            // Count matches
-            const symbolCounts = {};
-            visibleSymbols.forEach(symbol => {
-                symbolCounts[symbol] = (symbolCounts[symbol] || 0) + 1;
-            });
-
-            // Calculate winnings
-            for (const [symbolImg, count] of Object.entries(symbolCounts)) {
-                if (count >= 3) {
-                    const symbol = symbols.find(s => s.image.includes(symbolImg));
-                    if (symbol) {
-                        const multiplier = symbol.multiplier * (count / 3);
-                        winnings += Math.floor(bet * multiplier);
+                for (const [symbolImg, count] of Object.entries(symbolCounts)) {
+                    if (count >= 3) {
+                        const symbol = symbols.find(s => s.image.includes(symbolImg));
+                        if (symbol) {
+                            const multiplier = symbol.multiplier * (count / 3);
+                            winnings += Math.floor(bet * multiplier);
+                        }
                     }
                 }
-            }
+            });
 
             balance += winnings;
             balanceDisplay.textContent = balance;
